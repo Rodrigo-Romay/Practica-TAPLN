@@ -2,20 +2,21 @@
 pandas
 openpyxl            # lectura de .xlsx
 
-# --- EDA y baselines clásicos ---
+# --- EDA y baselines clásicos (iteración actual) ---
 numpy
 scikit-learn
 matplotlib
 seaborn
 jupyter
+ipykernel           # kernel para notebooks en VS Code
 
-# --- Modelos transformer (BETO / RoBERTa-bne) ---
-torch
-transformers
-datasets
-accelerate
+# --- Modelos transformer (BETO / RoBERTa-bne): descomentar al llegar ---
+# torch             # en Windows con GPU, instalar antes desde pytorch.org
+# transformers
+# datasets
+# accelerate
 
 # --- LLM + RAG (a decidir según el proveedor elegido) ---
-anthropic
-sentence-transformers
-faiss-cpu
+# anthropic
+# sentence-transformers
+# faiss-cpu
