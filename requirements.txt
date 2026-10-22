@@ -1,0 +1,21 @@
+# --- Preprocesado (src/process_data.py) ---
+pandas
+openpyxl            # lectura de .xlsx
+
+# --- EDA y baselines clásicos ---
+numpy
+scikit-learn
+matplotlib
+seaborn
+jupyter
+
+# --- Modelos transformer (BETO / RoBERTa-bne) ---
+torch
+transformers
+datasets
+accelerate
+
+# --- LLM + RAG (a decidir según el proveedor elegido) ---
+anthropic
+sentence-transformers
+faiss-cpu

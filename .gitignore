@@ -222,3 +222,6 @@ __marimo__/
 # Data (se ignora el contenido, se mantiene la carpeta)
 data/*
 !data/.gitkeep
+# Los datos originales (~2 MB) sí se versionan; data/processed se regenera con src/process_data.py
+!data/raw/
+!data/raw/*.xlsx
