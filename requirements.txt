@@ -4,6 +4,7 @@ openpyxl            # lectura de .xlsx
 
 # --- EDA y baselines clásicos (iteración actual) ---
 numpy
+scipy               # connected_components, spearmanr (EDA)
 scikit-learn
 matplotlib
 seaborn
