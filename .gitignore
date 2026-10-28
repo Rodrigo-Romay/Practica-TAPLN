@@ -225,3 +225,11 @@ data/*
 # Los datos originales (~2 MB) sí se versionan; data/processed se regenera con src/process_data.py
 !data/raw/
 !data/raw/*.xlsx
+
+# Documentación local (se ignora el contenido, se mantiene la carpeta)
+doc/*
+!doc/.gitkeep
+
+# Resultados (se ignora el contenido, se mantiene la carpeta): se regeneran ejecutando los notebooks
+results/*
+!results/.gitkeep
