@@ -55,13 +55,13 @@ def main():
 
     train, dev, test = cargar(a.train), cargar(a.dev), cargar(a.test)
 
-    # Duplicados entre train y dev: se quitan de dev (train se conserva entero)
+    # Duplicados entre train y dev: se quitan de dev 
     en_train = set(train["Text"])
     dup = dev["Text"].isin(en_train)
     print(f"Duplicados train/dev eliminados de dev: {dup.sum()}")
     dev = dev[~dup].reset_index(drop=True)
 
-    # Duplicados internos (informativo, no se tocan)
+    # Duplicados internos 
     for nombre, df in [("train", train), ("dev", dev), ("test", test)]:
         print(f"{nombre}: {len(df)} filas | Fake={df['label'].sum()} "
               f"True={(df['label'] == 0).sum()} | titulares vacíos="
