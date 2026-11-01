@@ -233,3 +233,7 @@ doc/*
 # Resultados (se ignora el contenido, se mantiene la carpeta): se regeneran ejecutando los notebooks
 results/*
 !results/.gitkeep
+# Excepción: los grupos de train para GroupKFold los necesita src/data_utils.group_ids (regenerables con 01_eda.ipynb)
+!results/eda/
+results/eda/*
+!results/eda/10_train_grupos.csv
