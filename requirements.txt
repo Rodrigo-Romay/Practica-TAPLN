@@ -17,7 +17,12 @@ ipykernel           # kernel para notebooks en VS Code
 # datasets
 # accelerate
 
-# --- LLM + RAG (a decidir según el proveedor elegido) ---
-# anthropic
+# --- LLM zero/few-shot (notebooks/03_llm.ipynb, en Kaggle; el notebook las instala) ---
+# torch               # ya viene en Kaggle
+# transformers>=4.51  # Qwen3 lo necesita
+# accelerate          # reparto del modelo entre las 2 GPUs (device_map="auto")
+# bitsandbytes        # cuantización a 4 bits (Gemma 3 12B)
+
+# --- RAG ---
 # sentence-transformers
 # faiss-cpu
