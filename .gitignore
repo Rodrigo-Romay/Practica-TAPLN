@@ -237,3 +237,5 @@ results/*
 !results/eda/
 results/eda/*
 !results/eda/10_train_grupos.csv
+# Excepción: salidas de los LLM (regenerarlas cuesta horas de GPU en Kaggle)
+!results/llm/
