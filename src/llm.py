@@ -191,8 +191,11 @@ def run(model, tok, inputs: pd.DataFrame, out_path, thinking: bool = False,
     for k, r in enumerate(todo.itertuples(index=False), 1):
         prompt = render(tok, build_messages(r.headline, r.body, examples), thinking)
         t = time.time()
-        rows.append({"Id": r.Id, "label": r.label, **score_prompt(model, tok, prompt, ids),
-                     "segundos": time.time() - t})
+        res = score_prompt(model, tok, prompt, ids)
+        if res["nan"] and k == 1:
+            raise RuntimeError("Puntuación NaN en la primera noticia: probablemente desbordamiento de fp16. "
+                               "Cargar el modelo con dtype=torch.float32.")
+        rows.append({"Id": r.Id, "label": r.label, **res, "segundos": time.time() - t})
         if k % save_every == 0 or k == len(todo):
             pd.DataFrame(rows).to_csv(out_path, index=False)
         if k % log_every == 0:
