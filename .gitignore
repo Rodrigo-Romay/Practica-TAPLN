@@ -237,3 +237,7 @@ results/*
 !results/eda/
 results/eda/*
 !results/eda/10_train_grupos.csv
+# Excepción: salidas del piloto LLM (cuestan GPU de Kaggle; el notebook 03 las reutiliza)
+!results/llm/
+results/llm/*
+!results/llm/*.csv

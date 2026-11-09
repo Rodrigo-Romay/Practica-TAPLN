@@ -30,6 +30,19 @@ USER = (
     "¿Esta noticia es verdadera o falsa? Responde solo «Verdadera» o «Falsa»."
 )
 
+# Variante del prompt de sistema para el ajuste (4.2): da criterios de verificación, pero sin
+# atajos de superficie (mayúsculas, longitud, cifras), que el EDA descartó como señal.
+SYSTEM_DETALLADO = (
+    "Eres un verificador de noticias en español. Lees una noticia y decides si es verdadera o falsa. "
+    "Fíjate en si los hechos son concretos y verosímiles, si las afirmaciones se atribuyen a fuentes "
+    "identificables, si el relato es coherente y si hay exageración, alarmismo o afirmaciones "
+    "extraordinarias sin respaldo. "
+    "En el texto se han eliminado enlaces y nombres de medios, y las cifras aparecen como NUM. "
+    "Responde con una sola palabra: Verdadera o Falsa."
+)
+
+PROMPTS = {"base": SYSTEM, "detallado": SYSTEM_DETALLADO}
+
 NO_HEADLINE = "no disponible"
 
 # Variantes de la respuesta; de cada una se toma el primer token.
@@ -55,6 +68,24 @@ def llm_inputs(df: pd.DataFrame, media_re, with_headline: bool = True,
         heads.append(head or NO_HEADLINE)
     return pd.DataFrame({"Id": df["Id"].to_numpy(), "label": df["label"].to_numpy(),
                          "headline": heads, "body": bodies})
+
+
+def select_examples(train_in: pd.DataFrame, k: int, seed: int = 42, max_words: int = 150) -> list:
+    """k ejemplos few-shot de train, mitad Fake y mitad Verdadera, alternados (Fake, True, Fake...).
+
+    Se eligen al azar con semilla fija entre las noticias con titular y se acortan a `max_words`
+    palabras para que el prompt no se dispare. Solo sale de train: nunca de dev ni de test.
+    """
+    if k % 2:
+        raise ValueError("k debe ser par (mitad Fake, mitad Verdadera)")
+    pool = train_in[train_in["headline"] != NO_HEADLINE]
+    pick = {y: pool[pool["label"] == y].sample(k // 2, random_state=seed) for y in (1, 0)}
+    out = []
+    for i in range(k // 2):
+        for y in (1, 0):
+            r = pick[y].iloc[i]
+            out.append((r["headline"], " ".join(r["body"].split()[:max_words]), int(y)))
+    return out
 
 
 def build_messages(headline: str, body: str, examples=None,
@@ -179,8 +210,14 @@ def score_prompt(model, tok, prompt: str, ids: dict) -> dict:
 
 
 def run(model, tok, inputs: pd.DataFrame, out_path, thinking: bool = False,
-        examples=None, save_every: int = 25, log_every: int = 50) -> pd.DataFrame:
-    """Puntúa todas las filas de `inputs` y guarda en CSV; si se corta, reanuda desde lo guardado."""
+        examples=None, system: str = SYSTEM, save_every: int = 25, log_every: int = 50) -> pd.DataFrame:
+    """Puntúa todas las filas de `inputs` y guarda en CSV; si se corta, reanuda desde lo guardado.
+
+    `thinking=True` no se admite: con el modo thinking el primer token es el inicio del
+    razonamiento, no la respuesta, y p_fake no tendría sentido.
+    """
+    if thinking:
+        raise ValueError("thinking no es compatible con puntuar el primer token de la respuesta")
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     rows = pd.read_csv(out_path).to_dict("records") if out_path.exists() else []
@@ -189,7 +226,7 @@ def run(model, tok, inputs: pd.DataFrame, out_path, thinking: bool = False,
     todo = inputs[~inputs["Id"].isin(done)]
     t0 = time.time()
     for k, r in enumerate(todo.itertuples(index=False), 1):
-        prompt = render(tok, build_messages(r.headline, r.body, examples), thinking)
+        prompt = render(tok, build_messages(r.headline, r.body, examples, system=system), thinking)
         t = time.time()
         rows.append({"Id": r.Id, "label": r.label, **score_prompt(model, tok, prompt, ids),
                      "segundos": time.time() - t})
