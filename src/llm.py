@@ -18,30 +18,38 @@ import preprocessing as pp
 
 MAX_WORDS = 800   # regla del EDA: texto íntegro hasta ~800 palabras
 
-SYSTEM = (
+# Mantenemos el prompt original como "base"
+SYSTEM_BASE = (
     "Eres un verificador de noticias en español. Lees una noticia y decides si es verdadera o falsa. "
     "En el texto se han eliminado enlaces y nombres de medios, y las cifras aparecen como NUM. "
     "Responde con una sola palabra: Verdadera o Falsa."
 )
 
-USER = (
-    "Titular: {headline}\n\n"
-    "Cuerpo:\n{body}\n\n"
-    "¿Esta noticia es verdadera o falsa? Responde solo «Verdadera» o «Falsa»."
-)
-
-# Variante del prompt de sistema para el ajuste (4.2): da criterios de verificación, pero sin
-# atajos de superficie (mayúsculas, longitud, cifras), que el EDA descartó como señal.
+# Creamos el prompt estructurado como "detallado"
 SYSTEM_DETALLADO = (
-    "Eres un verificador de noticias en español. Lees una noticia y decides si es verdadera o falsa. "
-    "Fíjate en si los hechos son concretos y verosímiles, si las afirmaciones se atribuyen a fuentes "
-    "identificables, si el relato es coherente y si hay exageración, alarmismo o afirmaciones "
-    "extraordinarias sin respaldo. "
-    "En el texto se han eliminado enlaces y nombres de medios, y las cifras aparecen como NUM. "
-    "Responde con una sola palabra: Verdadera o Falsa."
+    "ROL: Eres un analista experto en fact-checking y detección de desinformación.\n\n"
+    "OBJETIVO: Evaluar el texto periodístico proporcionado y clasificarlo estrictamente en una de dos categorías: 'Verdadera' o 'Falsa'.\n\n"
+    "CONTEXTO Y PREPROCESADO: El texto ha sido limpiado para evitar sesgos. Los enlaces (URLs) y los nombres de los medios de comunicación han sido eliminados. Todas las cifras numéricas han sido sustituidas por la etiqueta 'NUM'.\n\n"
+    "CRITERIOS DE EVALUACIÓN:\n"
+    "- Analiza la objetividad y el rigor del lenguaje.\n"
+    "- Detecta posibles sesgos, lenguaje sensacionalista, polarizador o emocional.\n"
+    "- Verifica la coherencia lógica interna entre el titular y el cuerpo de la noticia.\n"
+    "- No te bases en atajos de superficie como la longitud del texto o el uso de mayúsculas.\n\n"
+    "FORMATO DE SALIDA: Debes responder única y exclusivamente con una palabra. Sin explicaciones, sin signos de puntuación extra. Solo 'Verdadera' o 'Falsa'."
 )
 
-PROMPTS = {"base": SYSTEM, "detallado": SYSTEM_DETALLADO}
+# Exportamos ambos en el diccionario que espera el notebook
+PROMPTS = {
+    "base": SYSTEM_BASE,
+    "detallado": SYSTEM_DETALLADO
+}
+
+# Modificamos la variable USER para usar etiquetas claras
+USER = (
+    "<titular>\n{headline}\n</titular>\n\n"
+    "<cuerpo_noticia>\n{body}\n</cuerpo_noticia>\n\n"
+    "¿Esta noticia es Verdadera o Falsa? (Responde con una sola palabra)."
+)
 
 NO_HEADLINE = "no disponible"
 
@@ -89,7 +97,7 @@ def select_examples(train_in: pd.DataFrame, k: int, seed: int = 42, max_words: i
 
 
 def build_messages(headline: str, body: str, examples=None,
-                   system: str = SYSTEM, user: str = USER) -> list:
+                   system: str = PROMPTS["base"], user: str = USER) -> list:
     """Mensajes de chat. `examples` = [(titular, cuerpo, label), ...] para few-shot."""
     msgs = [{"role": "system", "content": system}]
     for h, b, y in examples or []:
@@ -210,7 +218,7 @@ def score_prompt(model, tok, prompt: str, ids: dict) -> dict:
 
 
 def run(model, tok, inputs: pd.DataFrame, out_path, thinking: bool = False,
-        examples=None, system: str = SYSTEM, save_every: int = 25, log_every: int = 50) -> pd.DataFrame:
+        examples=None, system: str = PROMPTS["base"], save_every: int = 25, log_every: int = 50) -> pd.DataFrame:
     """Puntúa todas las filas de `inputs` y guarda en CSV; si se corta, reanuda desde lo guardado.
 
     `thinking=True` no se admite: con el modo thinking el primer token es el inicio del
