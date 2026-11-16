@@ -241,3 +241,6 @@ results/eda/*
 !results/llm/
 results/llm/*
 !results/llm/*.csv
+
+# Resultados del RAG (índice y evidencias recuperadas)
+!results/rag/

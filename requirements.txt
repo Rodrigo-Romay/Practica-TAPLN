@@ -26,3 +26,15 @@ ipykernel           # kernel para notebooks en VS Code
 # --- RAG ---
 # sentence-transformers
 # faiss-cpu
+
+# --- Tests y evaluador (src/evaluate.py, tests/) ---
+pytest
+
+# --- RAG con evidencias externas (src/rag/evidence.py: API pública de Wikipedia) ---
+requests
+
+# --- Solo en Kaggle (los notebooks 04-09 las instalan; no hacen falta en local) ---
+# transformers accelerate bitsandbytes   # LLM en 4 bits
+# sentence-transformers                  # embeddings (BAAI/bge-m3) para el RAG de ejemplos
+
+# --- Aplicación web: ver requirements-app.txt ---
