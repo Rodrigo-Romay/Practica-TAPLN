@@ -3,10 +3,8 @@
 Reglas:
   - se excluye la fuente original de la noticia y su dominio (`Link` solo se usa para esto);
   - si se conoce una fecha límite, se descartan las evidencias posteriores;
-  - «sin evidencia» es un caso propio: se le dice al modelo y NO equivale a «falsa».
-
-Implementación mínima: `WikipediaSource` (API pública de MediaWiki, sin clave ni coste; contenido
-CC BY-SA). `LocalCorpusSource` sirve para pruebas y para un corpus propio; `NullSource` es el stub.
+  - «sin evidencia» es un caso propio: se le dice al modelo y no equivale a «falsa».
+  
 """
 import html
 import json
@@ -14,12 +12,10 @@ import re
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-
 import pandas as pd
-
 import eda_utils as eu
 
-NO_HEADLINE = "no disponible"   # igual que llm.NO_HEADLINE (no se importa llm para no cargar torch)
+NO_HEADLINE = "no disponible"  
 
 SIN_EVIDENCIA = ("Evidencias recuperadas: ninguna. No se ha encontrado información sobre este hecho; "
                  "eso no indica que la noticia sea falsa ni verdadera.")
@@ -31,7 +27,7 @@ class Evidence:
     titulo: str
     texto: str
     url: str = ""
-    fecha: "str | None" = None    # ISO (AAAA-MM-DD) de la versión del contenido; None si no se conoce
+    fecha: "str | None" = None    
     fuente: str = ""
     score: float = 0.0
 
@@ -49,7 +45,7 @@ class EvidenceSource:
 
 
 class NullSource(EvidenceSource):
-    """Stub: nunca encuentra nada (sirve para medir el efecto del prompt «sin evidencia»)."""
+    """Componente simulado: nunca encuentra nada (sirve para medir el efecto del prompt «sin evidencia»)."""
     name = "ninguna"
 
     def search(self, query, k=3, fecha_max=None):
@@ -79,7 +75,7 @@ class LocalCorpusSource(EvidenceSource):
 
 
 class WikipediaSource(EvidenceSource):
-    """Wikipedia en español mediante la API de MediaWiki (acceso automatizado permitido con User-Agent).
+    """Wikipedia en español mediante la API de MediaWiki.
 
     Con `fecha_max` se pide la última revisión anterior a esa fecha (evita leer artículos escritos
     después de la noticia); si la página no existía entonces, se descarta. Sin `fecha_max` se usa el
@@ -95,7 +91,7 @@ class WikipediaSource(EvidenceSource):
 
     def _get(self, **params) -> dict:
         import requests
-        time.sleep(self.pausa)   # cortesía con el servidor
+        time.sleep(self.pausa)   
         r = requests.get(self.api, params={"format": "json", "formatversion": 2, **params},
                          headers={"User-Agent": self.ua}, timeout=self.timeout)
         r.raise_for_status()
@@ -130,11 +126,11 @@ class WikipediaSource(EvidenceSource):
 def strip_wikitext(w: str) -> str:
     """Limpieza aproximada de wikitexto: quita plantillas, referencias, ficheros y marcas de enlace."""
     w = re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>|<!--.*?-->", " ", w, flags=re.S)
-    for _ in range(5):                                   # plantillas anidadas
+    for _ in range(5):                                 
         w, n = re.subn(r"\{\{[^{}]*\}\}", " ", w)
         if not n:
             break
-    w = re.sub(r"\{\|.*?\|\}", " ", w, flags=re.S)        # tablas
+    w = re.sub(r"\{\|.*?\|\}", " ", w, flags=re.S)    
     w = re.sub(r"\[\[(?:Archivo|File|Imagen|Image|Categoría|Category):[^\]]*\]\]", " ", w, flags=re.I)
     w = re.sub(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]", r"\1", w)
     w = re.sub(r"\[https?://\S+\s*([^\]]*)\]", r"\1", w)
@@ -142,7 +138,7 @@ def strip_wikitext(w: str) -> str:
     return " ".join(html.unescape(w).split())
 
 
-# --- Consulta, filtros y formato ---
+# Consulta, filtros y formato 
 
 def make_query(headline: str, body: str, max_words: int = 16) -> str:
     """Consulta a partir del texto: el titular si existe; si no, la primera frase del cuerpo."""
@@ -184,13 +180,13 @@ def format_evidence(evs, max_words: int = 120, media_re=None) -> str:
     return "\n".join(lineas)
 
 
-# --- Recuperación para un conjunto (con caché en disco, reanudable) ---
+# Recuperación para un conjunto 
 
 def retrieve_all(inputs: pd.DataFrame, links, source: EvidenceSource, path, k: int = 3,
                  fecha_max: "str | None" = None, log_every: int = 50) -> dict:
     """Recupera evidencias para cada noticia y las guarda en JSONL (una línea por noticia).
 
-    `inputs`: Id, headline, body. `links`: URL original de cada noticia, SOLO para excluir su dominio.
+    `inputs`: Id, headline, body. `links`: URL original de cada noticia, solo para excluir su dominio.
     Si el fichero existe, continúa desde las noticias que faltan. Los fallos de red se guardan como
     error y la noticia queda sin evidencia (se puede repetir borrando esas líneas).
     """
@@ -204,7 +200,7 @@ def retrieve_all(inputs: pd.DataFrame, links, source: EvidenceSource, path, k: i
             q, error = make_query(r.headline, r.body), ""
             try:
                 evs = filter_evidence(source.search(q, k, fecha_max), [eu.extract_domain(link)], fecha_max)
-            except Exception as e:   # red caída, límite de peticiones...
+            except Exception as e:   
                 evs, error = [], repr(e)
             f.write(json.dumps({"Id": int(r.Id), "query": q, "fuente": source.name, "fecha_max": fecha_max,
                                 "error": error, "evidencias": [asdict(e) for e in evs]}, ensure_ascii=False) + "\n")

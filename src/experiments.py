@@ -1,18 +1,14 @@
-"""Definición común de los experimentos con LLM (notebooks 04–06, ejecución final y explicabilidad).
-
+"""Definición común de los experimentos con LLM.
 Un experimento = conjunto a puntuar + modo (zero-shot, few-shot, RAG) + prompt. Los notebooks de dev
 y la ejecución final llaman a `experiment`, así que test se puntúa exactamente con el código probado en dev.
 
 Regla de los ejemplos: al puntuar dev (o train) la reserva es SOLO train; al puntuar test, train + dev.
 """
 from pathlib import Path
-
 import pandas as pd
-
 import llm
 import llm_fewshot as fs
 
-# Mismas claves que en notebooks/03_llm.ipynb
 MODELOS = {
     "qwen3-8b":   {"name": "Qwen/Qwen3-8B"},
     "gemma3-12b": {"name": "google/gemma-3-12b-it", "quant": "4bit"},
@@ -28,7 +24,7 @@ FECHA_MAX = {"train": "2018-12-31", "dev": "2018-12-31", "test": "2021-03-01"}  
 
 
 def inputs_for(splits: dict, media_re, split: str) -> pd.DataFrame:
-    """Entradas del LLM. En test la etiqueta se sustituye por -1: no viaja a los ficheros de puntuación."""
+    """Entradas del LLM. En test la etiqueta se sustituye por -1, ya que no viaja a los ficheros de puntuación."""
     df = llm.llm_inputs(splits[split], media_re)
     if split == "test":
         df["label"] = -1
@@ -47,7 +43,7 @@ def experiment(splits: dict, media_re, split: str, modo: str = "zeroshot", promp
     """Devuelve lo necesario para `run`: inputs, provider, context, system, prompt_id y nombre.
 
     modo: zeroshot | fewshot_fijo | fewshot_azar | rag_a (necesita `index`) | rag_b (necesita `evidencias`).
-    prompt: clave de `llm_fewshot.PROMPTS` (base, detallado, evidencias).
+    prompt: clave de `llm_fewshot.PROMPTS`.
     """
     if modo not in MODOS:
         raise ValueError(f"modo desconocido: {modo}")
@@ -87,7 +83,7 @@ def experiment(splits: dict, media_re, split: str, modo: str = "zeroshot", promp
 
 
 def out_path(root, e: dict, clave: str, carpeta: "str | None" = None, prefijo: "str | None" = None) -> Path:
-    """results/llm/<experimento>_<split>_<clave>_<prompt_id>.csv (o la carpeta/prefijo que se indique)."""
+    """results/llm/<experimento>_<split>_<clave>_<prompt_id>.csv."""
     carpeta = Path(carpeta) if carpeta else Path(root) / "results" / "llm"
     return carpeta / fs.out_name(prefijo or e["experimento"], e["split"], clave, e["pid"])
 
@@ -125,7 +121,7 @@ def run_all(root, experimentos: list, claves=FINALISTAS, borrar_cache: bool = Fa
 
 
 def show_prompt(e: dict, i: int = 0, recorte: int = 300) -> str:
-    """Texto del prompt de la noticia i (sin plantilla de chat), con los cuerpos recortados para leerlo."""
+    """Texto del prompt de la noticia i, con los cuerpos recortados para leerlo."""
     r = list(e["inputs"].itertuples(index=False))[i]
     prep = fs.prepare_row(r, e["provider"], e["context"])
     corta = lambda t: t if len(t) <= recorte else t[:recorte] + " [...]"
@@ -150,7 +146,7 @@ def to_predictions(scores: pd.DataFrame, sistema: str, umbral: float = 0.0) -> p
 def dev_table(root, split: str = "dev", n_boot: int = 2000) -> pd.DataFrame:
     """Tabla comparativa de todos los CSV de puntuaciones de un conjunto de train/dev en results/llm/.
 
-    Una fila por fichero y decisión (umbral 0 y rango 50 %, transductiva), con IC de F1 y AUC.
+    Una fila por fichero y decisión, con IC de F1 y AUC.
     """
     import evaluation as ev
     if split == "test":

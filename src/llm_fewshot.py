@@ -13,13 +13,11 @@ import json
 import re
 import time
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
-
 import llm
 
-MAX_WORDS_EJEMPLO = 150   # mismo recorte que llm.select_examples
+MAX_WORDS_EJEMPLO = 150   
 
 SYSTEM_EVIDENCIAS = (
     "Eres un verificador de noticias en español. Lees una noticia y decides si es verdadera o falsa. "
@@ -33,7 +31,7 @@ SYSTEM_EVIDENCIAS = (
 PROMPTS = {**llm.PROMPTS, "evidencias": SYSTEM_EVIDENCIAS}
 
 
-# --- Identificador y nombres de fichero ---
+# Identificador y nombres de fichero 
 
 def prompt_id(nombre: str, system: str = llm.PROMPTS["base"], user: str = llm.USER, **config) -> str:
     """`<nombre>-<hash6>`: el hash cubre el prompt de sistema, la plantilla y la configuración.
@@ -51,7 +49,7 @@ def out_name(experimento: str, split: str, clave: str, pid: str) -> str:
     return f"{experimento}_{split}_{clave}_{pid}.csv"
 
 
-# --- Proveedores de ejemplos: fila -> ([(titular, cuerpo, label), ...], "ids") ---
+# Proveedores de ejemplos: fila -> ([(titular, cuerpo, label), ...], "ids") 
 
 def example_pool(inputs: pd.DataFrame, split: str = "train") -> pd.DataFrame:
     """Reserva de ejemplos a partir de `llm.llm_inputs` (solo noticias con titular)."""
@@ -101,7 +99,7 @@ def cached_provider(provider, inputs: pd.DataFrame):
     return lambda row: cache[row.Id]
 
 
-# --- Construcción del prompt ---
+# Construcción del prompt 
 
 def prepare_row(row, provider=None, context=None) -> dict:
     """Ejemplos y contexto de una noticia: {'examples', 'ejemplos', 'context', 'n_evidencias'}."""
@@ -133,7 +131,7 @@ def fit_prompt(tok, headline, body, prep: dict, system, user, max_tokens: "int |
     return prompt, len(examples)
 
 
-# --- Puntuación ---
+# Puntuación 
 
 def run_examples(model, tok, inputs: pd.DataFrame, out_path, pid: str, provider=None, context=None,
                  system: str = llm.PROMPTS["base"], user: str = llm.USER, max_tokens: "int | None" = None,
@@ -170,7 +168,7 @@ def run_examples(model, tok, inputs: pd.DataFrame, out_path, pid: str, provider=
 
 
 def is_complete(out_path, n: int) -> bool:
-    """True si el CSV existe y tiene las n noticias (el experimento se puede saltar)."""
+    """True si el CSV existe y tiene las n noticias."""
     out_path = Path(out_path)
     return out_path.exists() and len(pd.read_csv(out_path)) == n
 

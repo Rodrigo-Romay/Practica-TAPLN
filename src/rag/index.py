@@ -1,20 +1,15 @@
 """RAG opción A: índice de ejemplos etiquetados (train, y dev solo al evaluar test).
 
-Troceado de ~300 palabras con 50 de solape (regla del EDA), embeddings multilingües y
+Troceado de ~300 palabras con 50 de solape, embeddings multilingües y
 recuperación top-k por coseno que excluye la propia noticia.
 
-Limitación conocida: train y dev son México 2018 y no contienen COVID-19; para las noticias de
-test sobre la pandemia los vecinos serán de otros temas y aportarán estilo, no hechos.
 """
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
-
 from llm_fewshot import MAX_WORDS_EJEMPLO, _as_example
 
 EMBEDDER = "BAAI/bge-m3"
-
 
 def chunk_words(text: str, size: int = 300, overlap: int = 50) -> list:
     """Ventanas de `size` palabras con `overlap` de solape. Un texto corto da un solo trozo."""
@@ -31,10 +26,10 @@ def chunk_words(text: str, size: int = 300, overlap: int = 50) -> list:
     return out
 
 
-# --- Embedders: encode(textos, is_query) -> matriz con filas normalizadas ---
+# Embedders: encode(textos, is_query) -> matriz con filas normalizadas 
 
 class TfidfEmbedder:
-    """Sustituto léxico en CPU (pruebas de humo y recuperador de referencia). Se ajusta con el índice."""
+    """Sustituto léxico en CPU. Se ajusta con el índice."""
     name = "tfidf"
 
     def __init__(self):
@@ -45,21 +40,21 @@ class TfidfEmbedder:
     def encode(self, texts, is_query: bool = False):
         if not self.fitted:
             self.fitted = True
-            return self.vec.fit_transform(texts)   # filas ya normalizadas (norma L2)
+            return self.vec.fit_transform(texts)   
         return self.vec.transform(texts)
 
 
 class STEmbedder:
-    """Embeddings con sentence-transformers (bge-m3 por defecto). Pensado para Kaggle (GPU)."""
+    """Embeddings con sentence-transformers (bge-m3 por defecto). Pensado para GPU."""
 
     def __init__(self, name: str = EMBEDDER, batch_size: int = 16, device=None, max_seq_length: int = 512):
         from sentence_transformers import SentenceTransformer
         self.name, self.batch_size = name, batch_size
         self.model = SentenceTransformer(name, device=device)
-        self.model.max_seq_length = max_seq_length   # un trozo de 300 palabras cabe de sobra
+        self.model.max_seq_length = max_seq_length   
 
     def encode(self, texts, is_query: bool = False):
-        if "e5" in self.name.lower():   # los modelos E5 esperan estos prefijos
+        if "e5" in self.name.lower():   
             texts = [("query: " if is_query else "passage: ") + t for t in texts]
         return self.model.encode(list(texts), batch_size=self.batch_size, normalize_embeddings=True,
                                  show_progress_bar=False)
@@ -69,7 +64,7 @@ def _dense(x) -> np.ndarray:
     return x.toarray() if hasattr(x, "toarray") else np.asarray(x)
 
 
-# --- Índice ---
+# Índice
 
 class ExampleIndex:
     """Índice de trozos de noticias etiquetadas. Cada documento se identifica por `split:Id`."""
