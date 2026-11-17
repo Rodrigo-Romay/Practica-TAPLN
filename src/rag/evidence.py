@@ -83,19 +83,31 @@ class WikipediaSource(EvidenceSource):
     """
     name = "wikipedia"
 
-    def __init__(self, lang: str = "es", pausa: float = 0.2, max_words: int = 150, timeout: int = 15,
-                 user_agent: str = "FakeDeS-TAPLN/0.1 (practica universitaria; uso academico)"):
+    def __init__(self, lang: str = "es", pausa: float = 1.0, max_words: int = 150, timeout: int = 15,
+                 user_agent: str = "FakeDeS-TAPLN/0.1 (practica universitaria; uso academico; "
+                                   "https://github.com/Rodrigo-Romay/Practica-TAPLN)",
+                 reintentos: int = 6):
         self.api = f"https://{lang}.wikipedia.org/w/api.php"
         self.base = f"https://{lang}.wikipedia.org/wiki/"
         self.pausa, self.max_words, self.timeout, self.ua = pausa, max_words, timeout, user_agent
+        self.reintentos = reintentos
 
     def _get(self, **params) -> dict:
+        """GET a la API con pausa fija y reintentos con espera creciente ante 429/5xx (respeta Retry-After)."""
         import requests
-        time.sleep(self.pausa)   
-        r = requests.get(self.api, params={"format": "json", "formatversion": 2, **params},
-                         headers={"User-Agent": self.ua}, timeout=self.timeout)
-        r.raise_for_status()
-        return r.json()
+        for intento in range(self.reintentos + 1):
+            time.sleep(self.pausa)
+            r = requests.get(self.api, params={"format": "json", "formatversion": 2, **params},
+                             headers={"User-Agent": self.ua}, timeout=self.timeout)
+            if r.status_code in (429, 500, 502, 503, 504) and intento < self.reintentos:
+                try:
+                    espera = float(r.headers.get("Retry-After", ""))
+                except ValueError:
+                    espera = 0.0
+                time.sleep(min(max(espera, 5 * 2 ** intento), 120))   # 5, 10, 20, 40, 80, 120 s
+                continue
+            r.raise_for_status()
+            return r.json()
 
     def _recorta(self, texto: str) -> str:
         return " ".join(texto.split()[:self.max_words])
@@ -202,6 +214,10 @@ def retrieve_all(inputs: pd.DataFrame, links, source: EvidenceSource, path, k: i
                 evs = filter_evidence(source.search(q, k, fecha_max), [eu.extract_domain(link)], fecha_max)
             except Exception as e:   
                 evs, error = [], repr(e)
+            seguidos = seguidos + 1 if error else 0
+            if seguidos >= 5:
+                raise RuntimeError(f"5 errores de red seguidos (último: {error}); se detiene la recuperación. "
+                                   "Espera unos minutos y vuelve a ejecutar: continúa donde se quedó.")
             f.write(json.dumps({"Id": int(r.Id), "query": q, "fuente": source.name, "fecha_max": fecha_max,
                                 "error": error, "evidencias": [asdict(e) for e in evs]}, ensure_ascii=False) + "\n")
             f.flush()
